@@ -1,0 +1,34 @@
+# Junos: eBGP session to an upstream provider with prefix filtering.
+# Uses documentation ASNs (RFC 5398) and documentation prefixes (RFC 5737). Replace them.
+# Apply with:  load set terminal  ->  commit check  ->  commit confirmed 5
+
+set routing-options autonomous-system 64496
+
+# What we are allowed to announce
+set policy-options prefix-list OUR-PREFIXES 203.0.113.0/24
+
+# Export: announce only our prefixes, reject everything else
+set policy-options policy-statement EXPORT-UPSTREAM term OURS from prefix-list OUR-PREFIXES
+set policy-options policy-statement EXPORT-UPSTREAM term OURS then accept
+set policy-options policy-statement EXPORT-UPSTREAM term REST then reject
+
+# Import: refuse bogons and our own space, accept the rest (tighten for a full-table feed)
+set policy-options policy-statement IMPORT-UPSTREAM term BOGONS from route-filter 0.0.0.0/8 orlonger
+set policy-options policy-statement IMPORT-UPSTREAM term BOGONS from route-filter 10.0.0.0/8 orlonger
+set policy-options policy-statement IMPORT-UPSTREAM term BOGONS from route-filter 127.0.0.0/8 orlonger
+set policy-options policy-statement IMPORT-UPSTREAM term BOGONS from route-filter 169.254.0.0/16 orlonger
+set policy-options policy-statement IMPORT-UPSTREAM term BOGONS from route-filter 172.16.0.0/12 orlonger
+set policy-options policy-statement IMPORT-UPSTREAM term BOGONS from route-filter 192.168.0.0/16 orlonger
+set policy-options policy-statement IMPORT-UPSTREAM term BOGONS from route-filter 224.0.0.0/3 orlonger
+set policy-options policy-statement IMPORT-UPSTREAM term BOGONS then reject
+set policy-options policy-statement IMPORT-UPSTREAM term OWN from prefix-list-filter OUR-PREFIXES orlonger
+set policy-options policy-statement IMPORT-UPSTREAM term OWN then reject
+set policy-options policy-statement IMPORT-UPSTREAM term OK then accept
+
+set protocols bgp group UPSTREAM type external
+set protocols bgp group UPSTREAM peer-as 64497
+set protocols bgp group UPSTREAM import IMPORT-UPSTREAM
+set protocols bgp group UPSTREAM export EXPORT-UPSTREAM
+set protocols bgp group UPSTREAM neighbor 192.0.2.1 description "Upstream A"
+# Optional hardening: set protocols bgp group UPSTREAM authentication-key "<secret>"
+# Optional safety:    set protocols bgp group UPSTREAM family inet unicast prefix-limit maximum 1000 teardown 80

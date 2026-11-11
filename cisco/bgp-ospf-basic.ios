@@ -1,0 +1,31 @@
+! Cisco IOS: eBGP to an upstream with prefix filtering, plus OSPF for internal reachability.
+! Documentation ASNs and prefixes - replace.
+
+ip prefix-list OUR-PREFIXES seq 5 permit 203.0.113.0/24
+ip prefix-list DEFAULT-ONLY seq 5 permit 0.0.0.0/0
+
+route-map TO-UPSTREAM permit 10
+ match ip address prefix-list OUR-PREFIXES
+
+route-map FROM-UPSTREAM permit 10
+ match ip address prefix-list DEFAULT-ONLY
+
+! the BGP network statement needs a matching route in the routing table
+ip route 203.0.113.0 255.255.255.0 Null0
+
+router bgp 64496
+ bgp log-neighbor-changes
+ network 203.0.113.0 mask 255.255.255.0
+ neighbor 192.0.2.1 remote-as 64497
+ neighbor 192.0.2.1 description Upstream A
+ neighbor 192.0.2.1 maximum-prefix 100 80
+ neighbor 192.0.2.1 route-map TO-UPSTREAM out
+ neighbor 192.0.2.1 route-map FROM-UPSTREAM in
+
+router ospf 1
+ router-id 192.0.2.254
+ passive-interface default
+ no passive-interface Vlan100
+ network 192.0.2.0 0.0.0.255 area 0
+
+! Verify:  show ip bgp summary | show ip bgp neighbors 192.0.2.1 advertised-routes | show ip ospf neighbor

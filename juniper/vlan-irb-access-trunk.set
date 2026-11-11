@@ -1,0 +1,20 @@
+# Junos (ELS switches, e.g. EX/QFX): VLANs, L3 gateway on IRB, access and trunk ports.
+
+set vlans V100-SERVERS vlan-id 100
+set vlans V100-SERVERS l3-interface irb.100
+set vlans V200-MGMT vlan-id 200
+set vlans V200-MGMT l3-interface irb.200
+
+set interfaces irb unit 100 family inet address 192.0.2.1/24
+set interfaces irb unit 200 family inet address 198.51.100.1/24
+
+# Access port (server)
+set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access
+set interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members V100-SERVERS
+
+# Trunk port (to another switch / hypervisor)
+set interfaces xe-0/1/0 unit 0 family ethernet-switching interface-mode trunk
+set interfaces xe-0/1/0 unit 0 family ethernet-switching vlan members [ V100-SERVERS V200-MGMT ]
+
+# Verify
+# show vlans | show ethernet-switching table | show interfaces irb terse

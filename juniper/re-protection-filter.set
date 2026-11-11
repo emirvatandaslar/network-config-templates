@@ -1,0 +1,39 @@
+# Junos: protect the Routing Engine (loopback) - allow only what must reach the control plane.
+# DANGER: a wrong filter can lock you out. ALWAYS use `commit confirmed 5` and keep a console session open.
+
+set policy-options prefix-list MGMT-NETS 198.51.100.0/24
+set policy-options prefix-list BGP-PEERS 192.0.2.1/32
+
+set firewall policer ICMP-LIMIT if-exceeding bandwidth-limit 1m
+set firewall policer ICMP-LIMIT if-exceeding burst-size-limit 15k
+set firewall policer ICMP-LIMIT then discard
+
+set firewall family inet filter PROTECT-RE term BGP from source-prefix-list BGP-PEERS
+set firewall family inet filter PROTECT-RE term BGP from protocol tcp
+set firewall family inet filter PROTECT-RE term BGP from port bgp
+set firewall family inet filter PROTECT-RE term BGP then accept
+
+set firewall family inet filter PROTECT-RE term MGMT from source-prefix-list MGMT-NETS
+set firewall family inet filter PROTECT-RE term MGMT from protocol tcp
+set firewall family inet filter PROTECT-RE term MGMT from destination-port [ ssh https ]
+set firewall family inet filter PROTECT-RE term MGMT then accept
+
+set firewall family inet filter PROTECT-RE term SNMP-NTP from source-prefix-list MGMT-NETS
+set firewall family inet filter PROTECT-RE term SNMP-NTP from protocol udp
+set firewall family inet filter PROTECT-RE term SNMP-NTP from destination-port [ snmp ntp ]
+set firewall family inet filter PROTECT-RE term SNMP-NTP then accept
+
+set firewall family inet filter PROTECT-RE term ICMP from protocol icmp
+set firewall family inet filter PROTECT-RE term ICMP then policer ICMP-LIMIT
+set firewall family inet filter PROTECT-RE term ICMP then accept
+
+set firewall family inet filter PROTECT-RE term OSPF from protocol ospf
+set firewall family inet filter PROTECT-RE term OSPF then accept
+
+set firewall family inet filter PROTECT-RE term DROP then count re-dropped
+set firewall family inet filter PROTECT-RE term DROP then discard
+
+set interfaces lo0 unit 0 family inet filter input PROTECT-RE
+
+# Verify
+# show firewall filter PROTECT-RE | show firewall log

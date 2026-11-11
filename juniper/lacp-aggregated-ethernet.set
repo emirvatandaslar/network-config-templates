@@ -1,0 +1,14 @@
+# Junos: LACP link aggregation (ae0) as a trunk. Configure both ends (active/active preferred).
+
+set chassis aggregated-devices ethernet device-count 2
+
+set interfaces ae0 aggregated-ether-options lacp active
+set interfaces ae0 aggregated-ether-options lacp periodic fast
+set interfaces ae0 unit 0 family ethernet-switching interface-mode trunk
+set interfaces ae0 unit 0 family ethernet-switching vlan members [ V100-SERVERS V200-MGMT ]
+
+set interfaces xe-0/1/1 ether-options 802.3ad ae0
+set interfaces xe-0/1/2 ether-options 802.3ad ae0
+
+# Verify
+# show lacp interfaces ae0 extensive | show interfaces ae0 terse | show interfaces ae0 statistics

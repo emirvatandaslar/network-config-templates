@@ -1,0 +1,29 @@
+! Cisco IOS: VLANs, SVI gateway, access/trunk ports and an LACP port-channel.
+
+vlan 100
+ name SERVERS
+vlan 200
+ name MGMT
+
+interface Vlan100
+ ip address 192.0.2.1 255.255.255.0
+ no shutdown
+
+interface GigabitEthernet1/0/1
+ description server access
+ switchport mode access
+ switchport access vlan 100
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+
+interface range TenGigabitEthernet1/1/1 - 2
+ description LACP uplink
+ switchport mode trunk
+ switchport trunk allowed vlan 100,200
+ channel-group 1 mode active
+
+interface Port-channel1
+ switchport mode trunk
+ switchport trunk allowed vlan 100,200
+
+! Verify:  show vlan brief | show etherchannel summary | show interfaces trunk
